@@ -16,13 +16,11 @@ PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
 
 def main(page: ft.Page):
     try:
-        # 1. CẤU HÌNH TRANG CƠ BẢN (AN TOÀN NHẤT)
+        # 1. CẤU HÌNH TRANG (GIỮ NGUYÊN LAYOUT CỔ ĐIỂN ĐỂ KHÔNG BỊ MÀN HÌNH XÁM)
         page.title = "TÁ LẢ PRO"
         page.theme_mode = ft.ThemeMode.LIGHT
         page.bgcolor = COLOR_BG
-        # Tự động cuộn trang (Thay vì dùng ListView)
         page.scroll = ft.ScrollMode.AUTO 
-        # Padding trên 30 để tránh tai thỏ (Thay vì SafeArea)
         page.padding = ft.padding.only(top=30, left=10, right=10, bottom=10)
 
         # --- BIẾN TOÀN CỤC ---
@@ -35,7 +33,7 @@ def main(page: ft.Page):
         }
         temp_data = {}
 
-        # --- HÀM TẠO NÚT CHUẨN (KHÔNG DÙNG CONTAINER) ---
+        # --- HÀM TẠO NÚT ---
         def create_btn(text, action, bg_color, color="white"):
             return ft.ElevatedButton(
                 text=text,
@@ -50,19 +48,20 @@ def main(page: ft.Page):
                 width=1000 # Full width
             )
 
-        # --- THẺ NGƯỜI CHƠI ---
+        # --- THẺ NGƯỜI CHƠI (SỬA LỖI ICON TẠI ĐÂY) ---
         def create_player_card(p):
             money = int(p['money'])
             money_color = "green" if money >= 0 else "red"
             
             return ft.Card(
-                elevation=2, # Đổ bóng nhẹ chuẩn Android
+                elevation=2,
                 color="white",
                 content=ft.Container(
                     padding=15,
                     content=ft.Row([
                         ft.Row([
-                            ft.Icon(ft.icons.PERSON, size=30, color="#555555"),
+                            # SỬA LỖI QUAN TRỌNG: Dùng chuỗi "person" thay vì ft.icons.PERSON
+                            ft.Icon(name="person", size=30, color="#555555"),
                             ft.Column([
                                 ft.Text(p["name"], weight="bold", size=16, color="#333333"),
                                 ft.GestureDetector(
@@ -112,7 +111,7 @@ def main(page: ft.Page):
 
             # 2. DANH SÁCH NGƯỜI CHƠI
             page.add(header)
-            page.add(ft.Container(height=10)) # Khoảng cách
+            page.add(ft.Container(height=10)) 
             
             for p in state["players"]:
                 page.add(create_player_card(p))
@@ -138,7 +137,6 @@ def main(page: ft.Page):
                 ft.Expanded(create_btn("RESET", reset_game, "#95A5A6")),
             ]))
             
-            # Thêm khoảng trống cuối trang để vuốt cho dễ
             page.add(ft.Container(height=50))
             page.update()
 
@@ -168,7 +166,7 @@ def main(page: ft.Page):
             page.add(ft.TextButton("Quay lại", on_click=lambda e: (callback(None) if not multi else callback([]))))
             page.update()
 
-        # --- LOGIC (GIỮ NGUYÊN) ---
+        # --- LOGIC ---
         def on_nop_ga_auto(p):
             if not p: return view_dashboard()
             count = sum(1 for log in state["current_logs"] if log.startswith(f"{p['name']}"))
