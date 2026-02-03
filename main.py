@@ -1,15 +1,19 @@
 import flet as ft
 from datetime import datetime
 
-# --- BẢNG MÀU HOÀNG GIA (LIGHT LUXURY) ---
-COLOR_BG = "#F5F7FA"          # Trắng sứ (Nền chính)
-COLOR_CARD = "#FFFFFF"        # Trắng tinh (Nền thẻ)
-COLOR_TEXT_MAIN = "#2C3E50"   # Xanh than (Chữ chính)
-COLOR_GOLD = "#B8860B"        # Vàng kim đậm (Viền/Điểm nhấn)
-COLOR_GOLD_LIGHT = "#F9F1CC"  # Vàng kem (Nền phụ)
-COLOR_BTN_PRIMARY = "#1A237E" # Xanh Hoàng Gia (Nút chính)
-COLOR_BTN_DANGER = "#C62828"  # Đỏ đô (Nút hủy/Ù)
-COLOR_SHADOW = ft.colors.with_opacity(0.15, "black")
+# --- BẢNG MÀU HOÀNG GIA (Dùng mã Hex trực tiếp để tránh lỗi Android) ---
+COLOR_BG = "#F5F7FA"          
+COLOR_CARD = "#FFFFFF"        
+COLOR_TEXT_MAIN = "#2C3E50"   
+COLOR_GOLD = "#B8860B"        
+# Mã màu có độ trong suốt (Alpha Hex): 26 = 15% opacity
+COLOR_SHADOW = "#26000000" 
+
+# Các màu nút bấm
+COLOR_BTN_PRIMARY = "#1A237E" 
+COLOR_BTN_DANGER = "#C62828"
+COLOR_BTN_ORANGE = "#F57C00"
+COLOR_BTN_GREY = "#546E7A"
 
 DEF_BET = 10
 PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
@@ -20,7 +24,6 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = COLOR_BG
     page.padding = 0 
-    # QUAN TRỌNG: SafeArea giúp tránh bị tai thỏ/camera che mất nội dung
     page.safe_area = True 
 
     # --- BIẾN TOÀN CỤC ---
@@ -34,31 +37,30 @@ def main(page: ft.Page):
     
     temp_data = {}
 
-    # --- UI COMPONENT: NÚT 3D CAO CẤP ---
+    # --- UI COMPONENT: NÚT 3D (Đã sửa lỗi ft.colors) ---
     def create_3d_btn(text, action, bg_color, height=55, text_size=14):
+        # Tạo màu tối hơn cho gradient thủ công
+        # (Để tránh dùng ft.colors.with_opacity gây lỗi)
         return ft.Container(
             content=ft.Text(text, size=text_size, weight="bold", color="white", text_align="center"),
             on_click=action,
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment(0, 0), # Dùng tọa độ thay vì ft.alignment.center
             height=height,
             border_radius=12,
-            # Hiệu ứng Gradient tạo khối 3D
             gradient=ft.LinearGradient(
                 begin=ft.alignment.top_center,
                 end=ft.alignment.bottom_center,
                 colors=[
                     bg_color,
-                    ft.colors.with_opacity(0.8, bg_color) # Màu dưới đậm hơn tạo bóng
+                    bg_color # Dùng màu phẳng cho an toàn trên Android
                 ],
             ),
-            # Đổ bóng (Shadow) để nút nổi lên
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=6,
-                color=ft.colors.with_opacity(0.4, bg_color),
+                color="#66000000", # Bóng đen mờ
                 offset=ft.Offset(0, 4),
             ),
-            # Hiệu ứng nhấn
             ink=True,
             expand=True
         )
@@ -66,31 +68,30 @@ def main(page: ft.Page):
     # --- UI COMPONENT: THẺ NGƯỜI CHƠI ---
     def create_player_card(p):
         money_val = int(p['money'])
-        money_color = "#2E7D32" if money_val >= 0 else "#C62828" # Xanh rêu / Đỏ đô
+        money_color = "#2E7D32" if money_val >= 0 else "#C62828" 
         money_bg = "#E8F5E9" if money_val >= 0 else "#FFEBEE"
         
         return ft.Container(
             padding=15,
             border_radius=15,
             bgcolor=COLOR_CARD,
-            # Viền vàng mỏng tinh tế
             border=ft.border.all(1, "#E0E0E0"),
             shadow=ft.BoxShadow(blur_radius=10, color=COLOR_SHADOW, offset=ft.Offset(2, 4)),
             content=ft.Row([
                 # Avatar & Tên
                 ft.Row([
                     ft.Container(
-                        content=ft.Icon(ft.icons.PERSON, size=28, color="white"),
+                        # Dùng chuỗi tên icon thay vì ft.icons.PERSON
+                        content=ft.Icon(name="person", size=28, color="white"),
                         padding=8,
-                        bgcolor=COLOR_GOLD, # Avatar nền vàng
+                        bgcolor=COLOR_GOLD, 
                         border_radius=50,
-                        shadow=ft.BoxShadow(blur_radius=4, color=COLOR_GOLD)
                     ),
                     ft.Column([
                         ft.Text(p["name"], weight="bold", size=16, color=COLOR_TEXT_MAIN),
                         ft.Container(
                             content=ft.Row([
-                                ft.Icon(ft.icons.EDIT_SQUARE, size=12, color="grey"),
+                                ft.Icon(name="edit", size=12, color="grey"),
                                 ft.Text("Đổi tên", size=12, color="grey")
                             ], spacing=3),
                             on_click=lambda e, x=p: goto_rename(x),
@@ -104,7 +105,7 @@ def main(page: ft.Page):
                     bgcolor=money_bg,
                     padding=ft.padding.symmetric(horizontal=12, vertical=6),
                     border_radius=8,
-                    border=ft.border.all(1, ft.colors.with_opacity(0.2, money_color))
+                    border=ft.border.all(1, money_color) # Viền màu theo tiền
                 )
             ], alignment="spaceBetween")
         )
@@ -125,24 +126,23 @@ def main(page: ft.Page):
     def view_dashboard():
         page.clean()
         
-        # 1. Header Sang Trọng (Khắc phục lỗi dính status bar)
+        # 1. Header Sang Trọng
         header = ft.Container(
             padding=ft.padding.symmetric(vertical=20, horizontal=15),
             border_radius=ft.border_radius.only(bottom_left=25, bottom_right=25),
             gradient=ft.LinearGradient(
-                colors=["#1F2937", "#111827"], # Xanh đen đậm
+                colors=["#1F2937", "#111827"], 
                 begin=ft.alignment.top_left, end=ft.alignment.bottom_right
             ),
             shadow=ft.BoxShadow(blur_radius=15, color="black", offset=ft.Offset(0, 5)),
             content=ft.Column([
-                # Bảng điểm số
                 ft.Row([
                     ft.Column([
                         ft.Text("MỨC CƯỢC", size=11, color="#9CA3AF", weight="bold"),
                         ft.Text(f"{int(state['bet']):,} K", size=24, weight="bold", color="white")
                     ], horizontal_alignment="center", expand=True),
                     
-                    ft.Container(width=1, height=40, bgcolor="#374151"), # Vạch ngăn
+                    ft.Container(width=1, height=40, bgcolor="#374151"), 
                     
                     ft.Column([
                         ft.Text("QUỸ GÀ", size=11, color=COLOR_GOLD, weight="bold"),
@@ -152,7 +152,7 @@ def main(page: ft.Page):
             ])
         )
 
-        # 2. Danh sách người chơi (Có cuộn)
+        # 2. Danh sách người chơi
         list_view = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
         for p in state["players"]:
             list_view.controls.append(create_player_card(p))
@@ -163,32 +163,28 @@ def main(page: ft.Page):
             expand=True 
         )
 
-        # 3. Khu vực nút bấm (Đã sửa lỗi vỡ chữ)
+        # 3. Khu vực nút bấm
         actions = ft.Container(
             padding=20,
             bgcolor="white",
             border_radius=ft.border_radius.only(top_left=25, top_right=25),
-            shadow=ft.BoxShadow(blur_radius=20, color=ft.colors.with_opacity(0.1, "black")),
+            shadow=ft.BoxShadow(blur_radius=20, color=COLOR_SHADOW),
             content=ft.Column([
-                # Hàng 1: Nộp Gà & Ù
                 ft.Row([
-                    # Sửa text: "NỘP GÀ" thay vì "NỘP GÀ (ĂN CÂY)" để không bị xuống dòng
-                    create_3d_btn("NỘP GÀ", lambda e: goto_selector("AI BỊ ĂN?", state["players"], on_nop_ga_auto), "#F57C00"),
+                    create_3d_btn("NỘP GÀ", lambda e: goto_selector("AI BỊ ĂN?", state["players"], on_nop_ga_auto), COLOR_BTN_ORANGE),
                     create_3d_btn("XỬ LÝ Ù", lambda e: goto_selector("AI Ù?", state["players"], on_u_selected), COLOR_BTN_DANGER),
                 ], spacing=15),
                 
                 ft.Container(height=5),
                 
-                # Hàng 2: Xếp hạng
                 ft.Row([
                     create_3d_btn("XẾP HẠNG VÁN ĐẤU", lambda e: goto_selector("AI VỀ NHẤT?", state["players"], on_nhat_selected), COLOR_BTN_PRIMARY),
                 ]),
                 
                 ft.Container(height=5),
                 
-                # Hàng 3: Các nút phụ (Màu xám)
                 ft.Row([
-                    create_3d_btn("LỊCH SỬ", view_history, "#546E7A", height=45, text_size=13),
+                    create_3d_btn("LỊCH SỬ", view_history, COLOR_BTN_GREY, height=45, text_size=13),
                     create_3d_btn("CÀI ĐẶT", goto_settings, "#78909C", height=45, text_size=13),
                     create_3d_btn("RESET", reset_game, "#78909C", height=45, text_size=13),
                 ], spacing=10)
@@ -198,7 +194,7 @@ def main(page: ft.Page):
         page.add(ft.Column([header, body, actions], spacing=0, expand=True))
         page.update()
 
-    # --- MÀN HÌNH CHỌN (SỬA ĐỂ TO VÀ DỄ BẤM HƠN) ---
+    # --- MÀN HÌNH CHỌN ---
     def goto_selector(title, items, callback, multi=False):
         page.clean()
         
@@ -206,12 +202,11 @@ def main(page: ft.Page):
         controls.append(ft.Container(
             content=ft.Text(title, size=22, weight="bold", color=COLOR_TEXT_MAIN),
             padding=ft.padding.only(top=10, bottom=20),
-            alignment=ft.alignment.center
+            alignment=ft.Alignment(0, 0)
         ))
 
         if not multi:
             for p in items:
-                # Nút chọn người to, full width
                 btn = ft.Container(
                     content=ft.Text(p["name"], size=16, weight="bold", color=COLOR_BTN_PRIMARY),
                     padding=15,
@@ -220,7 +215,7 @@ def main(page: ft.Page):
                     border=ft.border.all(1, COLOR_BTN_PRIMARY),
                     shadow=ft.BoxShadow(blur_radius=5, color=COLOR_SHADOW),
                     on_click=lambda e, x=p: callback(x),
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                     ink=True
                 )
                 controls.append(btn)
@@ -236,19 +231,18 @@ def main(page: ft.Page):
                 controls.append(con)
             
             def submit(e): callback([x["val"] for x in checks if x["cb"].value])
-            controls.append(create_3d_btn("XÁC NHẬN", submit, COLOR_GREEN))
+            controls.append(create_3d_btn("XÁC NHẬN", submit, "#00C853"))
 
         controls.append(ft.Container(height=10))
         controls.append(ft.TextButton("Quay lại", on_click=lambda e: (callback(None) if not multi else callback([])), style=ft.ButtonStyle(color="grey")))
         
-        # Bọc SafeArea cho màn hình này nữa
         page.add(ft.SafeArea(ft.Container(
             content=ft.Column(controls, spacing=12, scroll=ft.ScrollMode.AUTO),
             padding=20
         )))
         page.update()
 
-    # --- LOGIC GIỮ NGUYÊN ---
+    # --- LOGIC ---
     def on_nop_ga_auto(p):
         if not p: return view_dashboard()
         count = sum(1 for log in state["current_logs"] if log.startswith(f"{p['name']}"))
@@ -261,7 +255,7 @@ def main(page: ft.Page):
         amt = state["bet"] * he_so
         p["money"] -= amt; state["pot"] += amt
         state["current_logs"].append(f"{p['name']} bị ăn cây {lan_thu}: -{int(amt)}k (Gà +{int(amt)}k)")
-        page.snack_bar = ft.SnackBar(ft.Text(f"Thu {p['name']} cây thứ {lan_thu}: {int(amt)}k"), bgcolor=COLOR_GREEN)
+        page.snack_bar = ft.SnackBar(ft.Text(f"Thu {p['name']} cây thứ {lan_thu}: {int(amt)}k"), bgcolor="#00C853")
         page.snack_bar.open = True; view_dashboard()
 
     def on_nhat_selected(nhat):
@@ -348,7 +342,7 @@ def main(page: ft.Page):
                     ])
                 ))
         controls.append(ft.Container(height=10))
-        controls.append(create_3d_btn("QUAY LẠI", lambda e: view_dashboard(), "#78909C"))
+        controls.append(create_3d_btn("QUAY LẠI", lambda e: view_dashboard(), COLOR_BTN_GREY))
         page.add(ft.SafeArea(ft.Container(content=ft.Column(controls, scroll=ft.ScrollMode.AUTO), padding=20)))
         page.update()
 
@@ -359,8 +353,8 @@ def main(page: ft.Page):
             if tf.value.strip(): p["name"] = tf.value.strip()
             view_dashboard()
         page.add(ft.SafeArea(ft.Container(
-            padding=30, alignment=ft.alignment.center,
-            content=ft.Column([ft.Text("ĐỔI TÊN", size=20, weight="bold"), tf, ft.Container(height=20), create_3d_btn("LƯU", save, COLOR_GREEN)])
+            padding=30, alignment=ft.Alignment(0, 0),
+            content=ft.Column([ft.Text("ĐỔI TÊN", size=20, weight="bold"), tf, ft.Container(height=20), create_3d_btn("LƯU", save, "#00C853")])
         ))); page.update()
 
     def goto_settings(e):
@@ -371,8 +365,8 @@ def main(page: ft.Page):
             except: pass
             view_dashboard()
         page.add(ft.SafeArea(ft.Container(
-            padding=30, alignment=ft.alignment.center,
-            content=ft.Column([ft.Text("CÀI ĐẶT", size=20, weight="bold"), tf, ft.Container(height=20), create_3d_btn("LƯU", save, COLOR_GREEN)])
+            padding=30, alignment=ft.Alignment(0, 0),
+            content=ft.Column([ft.Text("CÀI ĐẶT", size=20, weight="bold"), tf, ft.Container(height=20), create_3d_btn("LƯU", save, "#00C853")])
         ))); page.update()
 
     def reset_game(e):
