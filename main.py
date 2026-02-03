@@ -16,7 +16,7 @@ PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
 
 def main(page: ft.Page):
     try:
-        # 1. CẤU HÌNH TRANG (GIỮ NGUYÊN LAYOUT CỔ ĐIỂN ĐỂ KHÔNG BỊ MÀN HÌNH XÁM)
+        # 1. CẤU HÌNH TRANG
         page.title = "TÁ LẢ PRO"
         page.theme_mode = ft.ThemeMode.LIGHT
         page.bgcolor = COLOR_BG
@@ -48,7 +48,7 @@ def main(page: ft.Page):
                 width=1000 # Full width
             )
 
-        # --- THẺ NGƯỜI CHƠI (SỬA LỖI ICON TẠI ĐÂY) ---
+        # --- THẺ NGƯỜI CHƠI (ĐÃ SỬA LỖI ICON) ---
         def create_player_card(p):
             money = int(p['money'])
             money_color = "green" if money >= 0 else "red"
@@ -60,8 +60,8 @@ def main(page: ft.Page):
                     padding=15,
                     content=ft.Row([
                         ft.Row([
-                            # SỬA LỖI QUAN TRỌNG: Dùng chuỗi "person" thay vì ft.icons.PERSON
-                            ft.Icon(name="person", size=30, color="#555555"),
+                            # SỬA LỖI: Bỏ 'name=', chỉ để chuỗi "person"
+                            ft.Icon("person", size=30, color="#555555"),
                             ft.Column([
                                 ft.Text(p["name"], weight="bold", size=16, color="#333333"),
                                 ft.GestureDetector(
