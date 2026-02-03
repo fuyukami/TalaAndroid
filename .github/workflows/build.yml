@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Cập nhật lên v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Cập nhật lên v5
         with:
           python-version: '3.11'
 
@@ -31,7 +31,7 @@ jobs:
           flet build apk --verbose
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # <-- QUAN TRỌNG: Đã sửa từ v3 lên v4
         with:
           name: TaLaPro-App
           path: build/app/outputs/flutter-apk/app-release.apk
