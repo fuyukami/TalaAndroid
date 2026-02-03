@@ -3,7 +3,6 @@ from datetime import datetime
 import logging
 
 # --- CẤU HÌNH AN TOÀN ---
-# Chuyển log ra màn hình console để debug nếu cần
 logging.basicConfig(level=logging.INFO)
 
 # Bảng màu Hex (An toàn tuyệt đối cho Android)
@@ -11,7 +10,7 @@ COLOR_BG = "#F5F7FA"
 COLOR_CARD = "#FFFFFF"        
 COLOR_TEXT_MAIN = "#2C3E50"   
 COLOR_GOLD = "#B8860B"        
-COLOR_SHADOW = "#1A000000" # Bóng mờ nhẹ
+COLOR_SHADOW = "#1A000000" 
 COLOR_BTN_PRIMARY = "#1A237E" 
 COLOR_BTN_DANGER = "#C62828"
 COLOR_BTN_ORANGE = "#F57C00"
@@ -21,7 +20,6 @@ DEF_BET = 10
 PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
 
 def main(page: ft.Page):
-    # Dùng try-catch bao trùm toàn bộ để chống crash
     try:
         # Cấu hình Android
         page.title = "TÁ LẢ HOÀNG GIA"
@@ -53,7 +51,7 @@ def main(page: ft.Page):
                 gradient=ft.LinearGradient(
                     begin=ft.alignment.top_center,
                     end=ft.alignment.bottom_center,
-                    colors=[bg_color, bg_color], # Màu phẳng an toàn
+                    colors=[bg_color, bg_color],
                 ),
                 shadow=ft.BoxShadow(
                     spread_radius=0, blur_radius=4,
@@ -74,14 +72,18 @@ def main(page: ft.Page):
                 content=ft.Row([
                     ft.Row([
                         ft.Container(
-                            # Dùng Icon an toàn
-                            content=ft.Icon(name="person", size=24, color="white"),
+                            # SỬA LỖI TẠI ĐÂY: Bỏ 'name=', chỉ để chuỗi "person"
+                            content=ft.Icon("person", size=24, color="white"),
                             padding=8, bgcolor=COLOR_GOLD, border_radius=50,
                         ),
                         ft.Column([
                             ft.Text(p["name"], weight="bold", size=16, color=COLOR_TEXT_MAIN),
                             ft.Container(
-                                content=ft.Text("✎ Sửa tên", size=12, color="grey"),
+                                # SỬA LỖI TẠI ĐÂY: Bỏ 'name=', chỉ để chuỗi "edit"
+                                content=ft.Row([
+                                    ft.Icon("edit", size=12, color="grey"),
+                                    ft.Text("Đổi tên", size=12, color="grey")
+                                ], spacing=3),
                                 on_click=lambda e, x=p: goto_rename(x),
                                 padding=ft.padding.only(top=2, bottom=2)
                             )
@@ -114,7 +116,7 @@ def main(page: ft.Page):
             header = ft.Container(
                 padding=ft.padding.symmetric(vertical=15, horizontal=15),
                 border_radius=ft.border_radius.only(bottom_left=20, bottom_right=20),
-                bgcolor="#1F2937", # Màu cứng thay vì Gradient phức tạp
+                bgcolor="#1F2937",
                 shadow=ft.BoxShadow(blur_radius=10, color="black", offset=ft.Offset(0, 4)),
                 content=ft.Row([
                     ft.Column([
@@ -293,7 +295,6 @@ def main(page: ft.Page):
         view_dashboard()
 
     except Exception as e:
-        # NẾU CÓ LỖI, HIỆN LỖI LÊN MÀN HÌNH ĐIỆN THOẠI
         page.clean()
         page.add(ft.SafeArea(ft.Column([
             ft.Text("RẤT TIẾC, ĐÃ XẢY RA LỖI!", color="red", size=20, weight="bold"),
