@@ -49,8 +49,9 @@ def main(page: ft.Page):
                 height=height,
                 border_radius=12,
                 gradient=ft.LinearGradient(
-                    begin=ft.alignment.top_center,
-                    end=ft.alignment.bottom_center,
+                    # SỬA LỖI: Dùng tọa độ số thay vì top_center
+                    begin=ft.Alignment(0, -1), # Top Center
+                    end=ft.Alignment(0, 1),    # Bottom Center
                     colors=[bg_color, bg_color],
                 ),
                 shadow=ft.BoxShadow(
@@ -72,14 +73,12 @@ def main(page: ft.Page):
                 content=ft.Row([
                     ft.Row([
                         ft.Container(
-                            # SỬA LỖI TẠI ĐÂY: Bỏ 'name=', chỉ để chuỗi "person"
                             content=ft.Icon("person", size=24, color="white"),
                             padding=8, bgcolor=COLOR_GOLD, border_radius=50,
                         ),
                         ft.Column([
                             ft.Text(p["name"], weight="bold", size=16, color=COLOR_TEXT_MAIN),
                             ft.Container(
-                                # SỬA LỖI TẠI ĐÂY: Bỏ 'name=', chỉ để chuỗi "edit"
                                 content=ft.Row([
                                     ft.Icon("edit", size=12, color="grey"),
                                     ft.Text("Đổi tên", size=12, color="grey")
@@ -116,7 +115,12 @@ def main(page: ft.Page):
             header = ft.Container(
                 padding=ft.padding.symmetric(vertical=15, horizontal=15),
                 border_radius=ft.border_radius.only(bottom_left=20, bottom_right=20),
-                bgcolor="#1F2937",
+                # SỬA LỖI: Gradient dùng tọa độ số
+                gradient=ft.LinearGradient(
+                    colors=["#1F2937", "#111827"], 
+                    begin=ft.Alignment(-1, -1), # Top Left
+                    end=ft.Alignment(1, 1)      # Bottom Right
+                ),
                 shadow=ft.BoxShadow(blur_radius=10, color="black", offset=ft.Offset(0, 4)),
                 content=ft.Row([
                     ft.Column([
