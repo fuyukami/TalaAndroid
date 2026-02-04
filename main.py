@@ -5,10 +5,9 @@ import logging
 # --- CẤU HÌNH ---
 logging.basicConfig(level=logging.INFO)
 
-# Bảng màu (Dùng Hex String chuẩn)
+# Bảng màu
 COLOR_BG = "#F0F2F5"          
 COLOR_HEADER_BG = "#1F2937"
-COLOR_TEXT_MAIN = "#333333"   
 COLOR_GOLD = "#F1C40F"        
 COLOR_SHADOW = "#33000000"
 
@@ -16,14 +15,14 @@ DEF_BET = 10
 PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
 
 def main(page: ft.Page):
-    # 1. CẤU HÌNH TRANG (TẮT CUỘN CỦA PAGE)
+    # Cấu hình an toàn nhất cho Mobile
     page.title = "TÁ LẢ PRO"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = COLOR_BG
-    page.padding = 0 
-    page.spacing = 0
-    # QUAN TRỌNG: Tắt scroll của page để ListView tự xử lý
-    page.scroll = None 
+    # Padding trên 35 để tránh tai thỏ (Thay vì dùng SafeArea widget dễ lỗi layout)
+    page.padding = ft.padding.only(top=35, left=10, right=10, bottom=10)
+    # Bật cuộn tự động cho toàn trang (Fix lỗi màn hình trắng/xám)
+    page.scroll = ft.ScrollMode.AUTO
 
     # --- BIẾN TOÀN CỤC ---
     state = {
@@ -33,24 +32,22 @@ def main(page: ft.Page):
         "history": [],      
         "current_logs": []
     }
-    
-    # Biến lưu nội dung tạm khi chọn
     temp_data = {}
 
-    # --- UI: NÚT BẤM AN TOÀN (Dùng Container) ---
+    # --- UI: NÚT BẤM (Dùng Container) ---
     def create_btn(text, action, bg_color):
         return ft.Container(
-            content=ft.Text(text, size=15, weight="bold", color="white", text_align="center"),
+            content=ft.Text(text, size=14, weight="bold", color="white", text_align="center"),
             on_click=action,
             bgcolor=bg_color,
-            padding=15,
+            padding=12,
             border_radius=8,
             alignment=ft.alignment.center,
             shadow=ft.BoxShadow(blur_radius=2, color=COLOR_SHADOW, offset=ft.Offset(0, 2)),
-            ink=True # Hiệu ứng khi bấm
+            ink=True
         )
 
-    # --- UI: THẺ NGƯỜI CHƠI (Dùng Container thay Card) ---
+    # --- UI: THẺ NGƯỜI CHƠI (Container) ---
     def create_player_card(p):
         money = int(p['money'])
         money_color = "green" if money >= 0 else "red"
@@ -59,12 +56,12 @@ def main(page: ft.Page):
             bgcolor="white",
             padding=15,
             border_radius=10,
-            shadow=ft.BoxShadow(blur_radius=3, color=COLOR_SHADOW, offset=ft.Offset(0, 2)),
+            shadow=ft.BoxShadow(blur_radius=2, color=COLOR_SHADOW, offset=ft.Offset(0, 1)),
             content=ft.Row([
                 ft.Row([
-                    # Icon: Truyền trực tiếp chuỗi tên icon (Positional Argument)
+                    # Icon người dùng
                     ft.Container(
-                        content=ft.Icon("person", 24, "white"), # icon, size, color
+                        content=ft.Icon("person", size=24, color="white"),
                         padding=8, bgcolor="#555555", border_radius=50
                     ),
                     ft.Column([
@@ -91,53 +88,52 @@ def main(page: ft.Page):
         state["history"].insert(0, {"time": timestamp, "title": title, "details": final})
         state["current_logs"] = []
 
-    # --- HÀM VẼ GIAO DIỆN CHÍNH (Sử dụng ListView expand) ---
+    # --- MÀN HÌNH CHÍNH ---
     def view_dashboard():
         page.clean()
 
-        # Tạo danh sách các controls sẽ đưa vào ListView
-        controls_list = []
-
         # 1. HEADER
-        controls_list.append(
-            ft.Container(
-                bgcolor=COLOR_HEADER_BG,
-                padding=20,
-                border_radius=ft.border_radius.vertical(bottom=15),
-                content=ft.Row([
-                    ft.Column([
-                        ft.Text("MỨC CƯỢC", size=12, color="#AAAAAA"),
-                        ft.Text(f"{int(state['bet']):,} K", size=24, weight="bold", color="white")
-                    ], horizontal_alignment="center", expand=True),
-                    ft.Container(width=1, height=40, bgcolor="#555555"),
-                    ft.Column([
-                        ft.Text("QUỸ GÀ", size=12, color=COLOR_GOLD),
-                        ft.Text(f"{int(state['pot']):,} K", size=30, weight="bold", color=COLOR_GOLD)
-                    ], horizontal_alignment="center", expand=True),
-                ])
-            )
+        header = ft.Container(
+            bgcolor=COLOR_HEADER_BG,
+            padding=20,
+            border_radius=12,
+            content=ft.Row([
+                ft.Column([
+                    ft.Text("MỨC CƯỢC", size=12, color="#AAAAAA"),
+                    ft.Text(f"{int(state['bet']):,} K", size=24, weight="bold", color="white")
+                ], horizontal_alignment="center", expand=True),
+                ft.Container(width=1, height=40, bgcolor="#555555"),
+                ft.Column([
+                    ft.Text("QUỸ GÀ", size=12, color=COLOR_GOLD),
+                    ft.Text(f"{int(state['pot']):,} K", size=30, weight="bold", color=COLOR_GOLD)
+                ], horizontal_alignment="center", expand=True),
+            ])
         )
-        controls_list.append(ft.Container(height=15))
+        page.add(header)
+        page.add(ft.Container(height=15))
 
         # 2. DANH SÁCH NGƯỜI CHƠI
         for p in state["players"]:
-            controls_list.append(create_player_card(p))
-            controls_list.append(ft.Container(height=10))
+            page.add(create_player_card(p))
+            page.add(ft.Container(height=10))
 
         # 3. NÚT CHỨC NĂNG
-        controls_list.append(ft.Container(height=10))
+        page.add(ft.Container(height=10))
         
-        controls_list.append(ft.Row([
+        # Hàng 1
+        page.add(ft.Row([
             ft.Expanded(create_btn("NỘP GÀ", lambda e: goto_selector("AI BỊ ĂN?", state["players"], on_nop_ga_auto), "#F39C12")),
             ft.Container(width=10),
             ft.Expanded(create_btn("XỬ LÝ Ù", lambda e: goto_selector("AI Ù?", state["players"], on_u_selected), "#E74C3C")),
         ]))
         
-        controls_list.append(ft.Container(height=10))
-        controls_list.append(create_btn("XẾP HẠNG VÁN ĐẤU", lambda e: goto_selector("AI VỀ NHẤT?", state["players"], on_nhat_selected), "#3498DB"))
+        page.add(ft.Container(height=10))
+        # Hàng 2
+        page.add(create_btn("XẾP HẠNG VÁN ĐẤU", lambda e: goto_selector("AI VỀ NHẤT?", state["players"], on_nhat_selected), "#3498DB"))
         
-        controls_list.append(ft.Container(height=10))
-        controls_list.append(ft.Row([
+        page.add(ft.Container(height=10))
+        # Hàng 3
+        page.add(ft.Row([
             ft.Expanded(create_btn("LỊCH SỬ", view_history, "#95A5A6")),
             ft.Container(width=5),
             ft.Expanded(create_btn("CÀI ĐẶT", goto_settings, "#95A5A6")),
@@ -145,68 +141,41 @@ def main(page: ft.Page):
             ft.Expanded(create_btn("RESET", reset_game, "#95A5A6")),
         ]))
         
-        # Khoảng trống cuối cùng để scroll thoải mái
-        controls_list.append(ft.Container(height=50))
-
-        # QUAN TRỌNG: Dùng SafeArea bọc ListView(expand=True)
-        # Đây là cách duy nhất để fix lỗi màn hình xám và scroll vô tận
-        page.add(
-            ft.SafeArea(
-                ft.ListView(
-                    controls=controls_list,
-                    expand=True,      # Bắt buộc: chiếm toàn bộ màn hình
-                    padding=15,       # Padding bên trong list
-                    spacing=0
-                )
-            )
-        )
+        # Khoảng trống cuối trang để vuốt thoải mái
+        page.add(ft.Container(height=50))
         page.update()
 
     # --- MÀN HÌNH CHỌN ---
     def goto_selector(title, items, callback, multi=False):
         page.clean()
-        
-        controls_list = []
-        controls_list.append(ft.Text(title, size=22, weight="bold", color="#333333"))
-        controls_list.append(ft.Container(height=20))
+        page.add(ft.Text(title, size=20, weight="bold", color="#333333"))
+        page.add(ft.Container(height=15))
         
         if not multi:
             for p in items:
-                controls_list.append(create_btn(p["name"], lambda e, x=p: callback(x), "#3498DB"))
-                controls_list.append(ft.Container(height=10))
+                page.add(create_btn(p["name"], lambda e, x=p: callback(x), "#3498DB"))
+                page.add(ft.Container(height=10))
         else:
             checks = []
             for p in items:
                 cb = ft.Checkbox(label=p["name"])
                 checks.append({"cb": cb, "val": p})
-                controls_list.append(ft.Container(content=cb, bgcolor="white", padding=10, border_radius=5))
-                controls_list.append(ft.Container(height=5))
+                page.add(ft.Container(content=cb, bgcolor="white", padding=10, border_radius=8))
+                page.add(ft.Container(height=5))
             
             def submit(e): callback([x["val"] for x in checks if x["cb"].value])
-            controls_list.append(ft.Container(height=10))
-            controls_list.append(create_btn("XÁC NHẬN", submit, "#2ECC71"))
+            page.add(ft.Container(height=10))
+            page.add(create_btn("XÁC NHẬN", submit, "#2ECC71"))
         
-        controls_list.append(ft.Container(height=20))
-        controls_list.append(
-            ft.Container(
-                content=ft.Text("Quay lại", color="grey", text_align="center"),
-                on_click=lambda e: (callback(None) if not multi else callback([])),
-                padding=15, alignment=ft.alignment.center
-            )
-        )
-
-        page.add(
-            ft.SafeArea(
-                ft.ListView(
-                    controls=controls_list,
-                    expand=True,
-                    padding=20
-                )
-            )
-        )
+        page.add(ft.Container(height=20))
+        page.add(ft.Container(
+            content=ft.Text("Quay lại", color="grey", text_align="center"),
+            on_click=lambda e: (callback(None) if not multi else callback([])),
+            padding=15, alignment=ft.alignment.center
+        ))
         page.update()
 
-    # --- LOGIC (GIỮ NGUYÊN NHƯ CŨ) ---
+    # --- LOGIC GIỮ NGUYÊN ---
     def on_nop_ga_auto(p):
         if not p: return view_dashboard()
         count = sum(1 for log in state["current_logs"] if log.startswith(f"{p['name']}"))
@@ -283,42 +252,32 @@ def main(page: ft.Page):
 
     def view_history(e):
         page.clean()
-        controls_list = []
-        controls_list.append(ft.Text("LỊCH SỬ", size=22, weight="bold"))
-        controls_list.append(ft.Container(height=10))
-        
-        if not state["history"]: 
-            controls_list.append(ft.Text("Trống", color="grey"))
+        page.add(ft.Text("LỊCH SỬ", size=20, weight="bold"))
+        page.add(ft.Container(height=10))
+        if not state["history"]: page.add(ft.Text("Trống", color="grey"))
         else:
             for log in state["history"]:
                 txt = "\n".join(log["details"])
-                controls_list.append(ft.Container(
-                    padding=15, bgcolor="white", border_radius=5, 
+                page.add(ft.Container(
+                    padding=15, bgcolor="white", border_radius=8, 
                     content=ft.Column([
                         ft.Row([ft.Text(log["title"], weight="bold"), ft.Text(log["time"], color="grey")], alignment="spaceBetween"),
                         ft.Text(txt, size=14)
                     ])
                 ))
-                controls_list.append(ft.Container(height=5))
-        
-        controls_list.append(ft.Container(height=10))
-        controls_list.append(create_btn("QUAY LẠI", lambda e: view_dashboard(), "#95A5A6"))
-        
-        page.add(ft.SafeArea(ft.ListView(controls=controls_list, expand=True, padding=20)))
+                page.add(ft.Container(height=5))
+        page.add(ft.Container(height=10))
+        page.add(create_btn("QUAY LẠI", lambda e: view_dashboard(), "#95A5A6"))
         page.update()
 
     def goto_rename(p):
         page.clean()
         tf = ft.TextField(value=p["name"], text_align="center")
-        
-        controls_list = []
-        controls_list.append(ft.Text("ĐỔI TÊN", size=22))
-        controls_list.append(ft.Container(height=10))
-        controls_list.append(tf)
-        controls_list.append(ft.Container(height=20))
-        controls_list.append(create_btn("LƯU", lambda e: (setattr(p, 'name', tf.value.strip()) or True) and view_dashboard() if tf.value else None, "#2ECC71"))
-        
-        page.add(ft.SafeArea(ft.ListView(controls=controls_list, expand=True, padding=30)))
+        page.add(ft.Text("ĐỔI TÊN", size=20))
+        page.add(ft.Container(height=10))
+        page.add(tf)
+        page.add(ft.Container(height=20))
+        page.add(create_btn("LƯU", lambda e: (setattr(p, 'name', tf.value.strip()) or True) and view_dashboard() if tf.value else None, "#2ECC71"))
         page.update()
 
     def goto_settings(e):
@@ -328,15 +287,11 @@ def main(page: ft.Page):
             try: state["bet"] = float(tf.value)
             except: pass
             view_dashboard()
-        
-        controls_list = []
-        controls_list.append(ft.Text("CÀI ĐẶT", size=22))
-        controls_list.append(ft.Container(height=10))
-        controls_list.append(tf)
-        controls_list.append(ft.Container(height=20))
-        controls_list.append(create_btn("LƯU", save, "#2ECC71"))
-        
-        page.add(ft.SafeArea(ft.ListView(controls=controls_list, expand=True, padding=30)))
+        page.add(ft.Text("CÀI ĐẶT", size=20))
+        page.add(ft.Container(height=10))
+        page.add(tf)
+        page.add(ft.Container(height=20))
+        page.add(create_btn("LƯU", save, "#2ECC71"))
         page.update()
 
     def reset_game(e):
