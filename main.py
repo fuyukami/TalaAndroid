@@ -9,9 +9,9 @@ def main(page: ft.Page):
     # Cấu hình trang chuẩn Mobile
     page.title = "TÁ LẢ PRO"
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.scroll = ft.ScrollMode.AUTO
+    page.scroll = ft.ScrollMode.HIDDEN 
     page.bgcolor = "#F0F2F5" 
-    page.padding = ft.padding.only(top=50, left=15, right=15, bottom=20)
+    page.padding = 0 
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH 
 
     # --- BIẾN TOÀN CỤC ---
@@ -20,11 +20,34 @@ def main(page: ft.Page):
         "pot": 0,
         "players": [{"name": n, "money": 0} for n in PLAYERS_DEF],
         "history": [],      
-        "current_logs": []  # Lịch sử tạm của ván hiện tại
+        "current_logs": []
     }
-    
-    # Biến tạm
-    temp_data = {}
+
+    # --- HÀM XỬ LÝ GESTURE (VUỐT) ---
+    def handle_swipe(e, on_back):
+        # Nếu vận tốc vuốt ngang lớn
+        if abs(e.primary_velocity) > 500: 
+            on_back()
+
+    def wrap_content(controls, on_back_action, pad_top=50):
+        """Bao bọc nội dung để bắt sự kiện vuốt"""
+        main_col = ft.Column(
+            controls=controls, 
+            scroll=ft.ScrollMode.AUTO, 
+            expand=True,
+            spacing=10
+        )
+        container = ft.Container(
+            content=main_col,
+            padding=ft.padding.only(top=pad_top, left=15, right=15, bottom=20),
+            expand=True,
+            bgcolor="#F0F2F5"
+        )
+        return ft.GestureDetector(
+            content=container,
+            on_horizontal_drag_end=lambda e: handle_swipe(e, on_back_action),
+            expand=True
+        )
 
     # --- HÀM TẠO NÚT ---
     def create_btn(text, action, bg="blue", color="white", expand=True):
@@ -41,35 +64,36 @@ def main(page: ft.Page):
             expand=expand 
         )
 
-    # --- HÀM GHI LỊCH SỬ CHÍNH THỨC ---
+    # --- HÀM GHI LỊCH SỬ ---
     def commit_log(title, result_details):
         timestamp = datetime.now().strftime("%H:%M")
         final_details = []
-        
-        # Gộp diễn biến ăn cây trước
         if state["current_logs"]:
             final_details.append("--- Diễn biến ---")
             final_details.extend(state["current_logs"])
             final_details.append("--- Kết quả ---")
-            
         final_details.extend(result_details)
-        
+
         log_entry = {
             "time": timestamp,
             "title": title,
             "details": final_details
         }
         state["history"].insert(0, log_entry)
-        state["current_logs"] = [] # Reset log tạm
+        state["current_logs"] = []
+
+    # --- HÀM THOÁT APP ---
+    def exit_app(e=None):
+        page.window_close()
 
     # --- MÀN HÌNH CHÍNH ---
-    def view_dashboard():
+    def view_dashboard(e=None):
         page.clean()
-        
-        # 1. Thanh thông tin
+
+        # 1. Info UI
         txt_bet = ft.Text(f"{int(state['bet']):,} k", size=20, weight="bold", color="#333333")
         txt_pot = ft.Text(f"{int(state['pot']):,} k", size=28, weight="bold", color="#FFC107")
-        
+
         info_card = ft.Container(
             content=ft.Row([
                 ft.Column([ft.Text("Mức cược", size=13, color="grey"), txt_bet], alignment="center"),
@@ -80,12 +104,11 @@ def main(page: ft.Page):
             shadow=ft.BoxShadow(blur_radius=10, color="#1A000000") 
         )
 
-        # 2. Danh sách người chơi
+        # 2. Player List UI
         list_col = ft.Column(spacing=10)
         for p in state["players"]:
             money_color = "#4CAF50" if p["money"] >= 0 else "#E53935"
             bg_money = "#E8F5E9" if p["money"] >= 0 else "#FFEBEE"
-            
             card = ft.Card(
                 content=ft.Container(
                     content=ft.Row([
@@ -106,20 +129,19 @@ def main(page: ft.Page):
                         )
                     ], alignment="spaceBetween"),
                     padding=15, bgcolor="white", border_radius=10
-                ),
-                elevation=0
+                ), elevation=0
             )
             list_col.controls.append(card)
 
-        # 3. Nút chức năng
+        # 3. Actions UI
         actions = ft.Column([
             ft.Container(height=10), 
             ft.Row([
-                create_btn("NỘP GÀ", lambda e: goto_selector("Ai bị ăn (Nộp gà)?", state["players"], on_nop_ga_auto), bg="#FFA726"),
-                create_btn("XỬ LÝ Ù", lambda e: goto_selector("Ai Ù?", state["players"], on_u_selected), bg="#EF5350"),
+                create_btn("NỘP GÀ", lambda e: nop_ga_flow(), bg="#FFA726"),
+                create_btn("XỬ LÝ Ù", lambda e: u_flow_step1_who(), bg="#EF5350"),
             ]),
             ft.Row([
-                create_btn("XẾP HẠNG VÁN THƯỜNG", lambda e: goto_selector("Ai NHẤT?", state["players"], on_nhat_selected), bg="#42A5F5"),
+                create_btn("XẾP HẠNG VÁN THƯỜNG", lambda e: rank_flow_step1_nhat(), bg="#42A5F5"),
             ]),
             ft.Row([
                 create_btn("XEM LỊCH SỬ", view_history, bg="#607D8B"),
@@ -127,14 +149,19 @@ def main(page: ft.Page):
             ft.Row([
                 create_btn("Cài đặt", goto_settings, bg="#90A4AE"),
                 create_btn("Reset", reset_game, bg="#90A4AE"),
+            ]),
+            ft.Row([
+                create_btn("THOÁT", exit_app, bg="#37474F"), 
             ])
         ], spacing=12)
 
-        page.add(info_card, list_col, actions)
+        page.add(wrap_content([info_card, list_col, actions], on_back_action=exit_app))
         page.update()
 
-    # --- MÀN HÌNH CHỌN (CHUNG) ---
-    def goto_selector(title, items, callback, multi=False):
+    # --- MÀN HÌNH CHỌN GENERIC (QUAN TRỌNG) ---
+    # on_submit: Hàm chạy khi chọn xong (tiến tới bước sau)
+    # on_back: Hàm chạy khi vuốt/ấn back (quay về bước trước)
+    def goto_selector(title, items, on_submit, on_back, multi=False):
         page.clean()
         controls = []
         controls.append(ft.Container(
@@ -142,9 +169,11 @@ def main(page: ft.Page):
             padding=ft.padding.only(top=20, bottom=20),
             alignment=ft.Alignment(0, 0)
         ))
+
         if not multi:
             for p in items:
-                btn = create_btn(p["name"], lambda e, x=p: callback(x), bg="white", color="#1976D2")
+                # Khi chọn 1 người, gọi on_submit với người đó
+                btn = create_btn(p["name"], lambda e, x=p: on_submit(x), bg="white", color="#1976D2")
                 btn.style.side = ft.BorderSide(1, "#1976D2")
                 controls.append(ft.Row([btn]))
         else:
@@ -157,107 +186,119 @@ def main(page: ft.Page):
                 )
                 checks.append({"cb": cb, "val": p})
                 controls.append(container)
-            def submit_multi(e):
-                callback([x["val"] for x in checks if x["cb"].value])
+
+            def handle_multi_submit(e):
+                selected = [x["val"] for x in checks if x["cb"].value]
+                on_submit(selected)
+
             controls.append(ft.Container(height=20))
-            controls.append(ft.Row([create_btn("XÁC NHẬN", submit_multi, bg="#4CAF50")]))
+            controls.append(ft.Row([create_btn("XÁC NHẬN", handle_multi_submit, bg="#4CAF50")]))
 
         controls.append(ft.Container(height=20))
-        controls.append(ft.Row([create_btn("Quay lại / Bỏ qua", lambda e: (callback(None) if not multi else callback([])), bg="transparent", color="grey")]))
-        page.add(ft.Column(controls))
+        # Nút Quay lại gọi trực tiếp hàm on_back
+        controls.append(ft.Row([create_btn("Quay lại", lambda e: on_back(), bg="transparent", color="grey")]))
+
+        # Vuốt ngang cũng gọi on_back
+        page.add(wrap_content(controls, on_back_action=on_back))
         page.update()
 
     # ========================================================
-    # LOGIC NỘP GÀ MỚI (TỰ ĐỘNG ĐẾM & TÍNH TIỀN)
+    # FLOW 1: NỘP GÀ
     # ========================================================
-    def on_nop_ga_auto(p):
-        if not p: return view_dashboard()
-        
-        # 1. Quét lịch sử tạm để đếm số lần người này đã bị ăn
+    def nop_ga_flow():
+        # Back về dashboard
+        goto_selector("Ai bị ăn (Nộp gà)?", state["players"], 
+                      on_submit=process_nop_ga, 
+                      on_back=view_dashboard)
+
+    def process_nop_ga(p):
+        if not p: return # Should not happen unless logic error
+
         count = 0
         for log in state["current_logs"]:
-            # Kiểm tra tên người chơi có ở đầu dòng log không
             if log.startswith(f"{p['name']}"):
                 count += 1
-        
-        # 2. Kiểm tra giới hạn (Tối đa 3 cây)
+
         if count >= 3:
-            page.snack_bar = ft.SnackBar(ft.Text(f"LỖI: {p['name']} đã bị ăn đủ 3 cây! Không thể nộp thêm."), bgcolor="red")
+            page.snack_bar = ft.SnackBar(ft.Text(f"LỖI: {p['name']} đã bị ăn đủ 3 cây!"), bgcolor="red")
             page.snack_bar.open = True
             page.update()
-            return view_dashboard()
+            # Ở lại màn hình chọn
+            nop_ga_flow() 
+            return
 
-        # 3. Tính tiền dựa trên lần thứ mấy (count = 0 là lần 1)
         lan_thu = count + 1
-        he_so = 0
-        
-        if lan_thu == 1: he_so = 1   # Cây 1: 1 cược
-        elif lan_thu == 2: he_so = 2 # Cây 2: 2 cược
-        elif lan_thu == 3: he_so = 4 # Cây 3 (Chốt): 4 cược
-        
+        he_so = 1 if lan_thu == 1 else (2 if lan_thu == 2 else 4)
         amt = state["bet"] * he_so
-        
-        # 4. Trừ tiền và lưu log
+
         p["money"] -= amt
         state["pot"] += amt
-        
-        # Log ghi rõ lần thứ mấy để dễ kiểm tra
+
         log_str = f"{p['name']} bị ăn cây {lan_thu}: -{int(amt)}k (Gà +{int(amt)}k)"
         state["current_logs"].append(log_str)
-        
-        # Thông báo thành công
-        page.snack_bar = ft.SnackBar(ft.Text(f"Đã thu {p['name']} cây thứ {lan_thu} ({int(amt)}k)"), bgcolor="green")
+
+        page.snack_bar = ft.SnackBar(ft.Text(f"Đã thu {p['name']} cây thứ {lan_thu}"), bgcolor="green")
         page.snack_bar.open = True
-        
         view_dashboard()
 
-    # --- LOGIC XẾP HẠNG ---
-    def on_nhat_selected(nhat):
-        if not nhat: return view_dashboard()
-        temp_data.clear()
-        temp_data["nhat"] = nhat
+    # ========================================================
+    # FLOW 2: XẾP HẠNG (RANKING)
+    # Step 1 -> Step 2 -> Step 3 -> Step 4 (Final)
+    # ========================================================
+
+    # BƯỚC 1: Chọn NHẤT
+    def rank_flow_step1_nhat():
+        goto_selector("Ai NHẤT?", state["players"], 
+                      on_submit=lambda nhat: rank_flow_step2_mom(nhat), 
+                      on_back=view_dashboard)
+
+    # BƯỚC 2: Chọn MÓM
+    def rank_flow_step2_mom(nhat):
         others = [p for p in state["players"] if p != nhat]
-        goto_selector("Chọn những người MÓM:", others, on_mom_selected, multi=True)
+        # Back quay lại bước 1
+        goto_selector("Chọn những người MÓM:", others, 
+                      on_submit=lambda moms: rank_flow_step3_nhi(nhat, moms), 
+                      on_back=rank_flow_step1_nhat, 
+                      multi=True)
 
-    def on_mom_selected(moms):
-        temp_data["moms"] = moms
-        nhat = temp_data["nhat"]
+    # BƯỚC 3: Chọn NHÌ
+    def rank_flow_step3_nhi(nhat, moms):
         normals = [p for p in state["players"] if p != nhat and p not in moms]
-        
-        if len(normals) == 0: finalize_rank()
+
+        # Nếu chỉ còn 1 người hoặc 0 người thì không cần chọn Nhì, tính điểm luôn
+        if len(normals) == 0:
+            finalize_rank(nhat, moms, None, None)
+            return
         elif len(normals) == 1:
-            temp_data["nhi"] = normals[0]
-            finalize_rank()
-        else:
-            goto_selector("Ai về NHÌ?", normals, on_nhi_selected)
+            finalize_rank(nhat, moms, normals[0], None)
+            return
 
-    def on_nhi_selected(nhi):
-        if not nhi: return finalize_rank()
-        temp_data["nhi"] = nhi
-        nhat = temp_data["nhat"]
-        moms = temp_data["moms"]
+        # Back quay lại bước 2 (truyền lại nhat để bước 2 render đúng)
+        goto_selector("Ai về NHÌ?", normals, 
+                      on_submit=lambda nhi: rank_flow_step4_ba(nhat, moms, nhi), 
+                      on_back=lambda: rank_flow_step2_mom(nhat))
+
+    # BƯỚC 4: Chọn BA (nếu cần)
+    def rank_flow_step4_ba(nhat, moms, nhi):
         remaining = [p for p in state["players"] if p != nhat and p not in moms and p != nhi]
-        
+
         if len(remaining) > 1:
-            goto_selector("Ai về BA?", remaining, on_ba_selected)
+            # Back quay lại bước 3
+            goto_selector("Ai về BA?", remaining, 
+                          on_submit=lambda ba: finalize_rank(nhat, moms, nhi, ba), 
+                          on_back=lambda: rank_flow_step3_nhi(nhat, moms))
         else:
-            finalize_rank()
+            finalize_rank(nhat, moms, nhi, None)
 
-    def on_ba_selected(ba):
-        if ba: temp_data["ba"] = ba
-        finalize_rank()
-
-    def finalize_rank():
-        nhat = temp_data["nhat"]
-        moms = temp_data["moms"]
-        
+    # TÍNH TOÁN CUỐI CÙNG
+    def finalize_rank(nhat, moms, nhi, ba):
         normal_losers = []
-        if "nhi" in temp_data: normal_losers.append(temp_data["nhi"])
-        if "ba" in temp_data: normal_losers.append(temp_data["ba"])
-        
+        if nhi: normal_losers.append(nhi)
+        if ba: normal_losers.append(ba)
+
         accounted = [nhat] + moms + normal_losers
         remaining = [p for p in state["players"] if p not in accounted]
-        normal_losers.extend(remaining)
+        normal_losers.extend(remaining) # Người còn lại là bét
 
         total_win = 0
         rank_details = []
@@ -267,7 +308,7 @@ def main(page: ft.Page):
             p["money"] -= amt
             total_win += amt
             rank_details.append(f"{p['name']} (Móm): -{int(amt)}k")
-            
+
         for i, p in enumerate(normal_losers):
             k = i + 1 
             amt = state["bet"] * k
@@ -275,23 +316,69 @@ def main(page: ft.Page):
             total_win += amt
             rank_name = "Nhì" if i==0 else ("Ba" if i==1 else "Bét")
             rank_details.append(f"{p['name']} ({rank_name}): -{int(amt)}k")
-            
+
         nhat["money"] += total_win
         rank_details.insert(0, f"{nhat['name']} (Nhất): +{int(total_win)}k")
-        
+
         commit_log("Tổng kết ván", rank_details)
-        temp_data.clear()
         view_dashboard()
 
-    # --- LOGIC Ù ---
-    def on_u_selected(u):
-        if not u: return view_dashboard()
-        temp_data["u"] = u
-        others = [p for p in state["players"] if p != u]
-        goto_selector("Có ai ĐỀN LÀNG không?", others, on_den_selected)
+    # ========================================================
+    # FLOW 3: XỬ LÝ Ù
+    # Step 1 -> Step 2
+    # ========================================================
 
-    def on_den_selected(den):
-        u = temp_data["u"]
+    # BƯỚC 1: Ai Ù
+    def u_flow_step1_who():
+        goto_selector("Ai Ù?", state["players"], 
+                      on_submit=lambda u: u_flow_step2_den(u), 
+                      on_back=view_dashboard)
+
+    # BƯỚC 2: Ai Đền (hoặc không ai đền)
+    def u_flow_step2_den(u_player):
+        others = [p for p in state["players"] if p != u_player]
+        # Back quay lại bước 1
+        goto_selector("Có ai ĐỀN LÀNG không?", others, 
+                      on_submit=lambda den: finalize_u(u_player, den), 
+                      on_back=u_flow_step1_who)
+
+    def finalize_u(u, den):
+        # Lưu ý: den có thể là None nếu người dùng chọn "Quay lại" ở bước chọn người đền?
+        # Không, nút Quay lại ở goto_selector gọi on_back (step1).
+        # Nhưng ở màn hình này ta nên có nút "Không ai đền" riêng? 
+        # Hiện tại goto_selector bắt buộc chọn 1 người.
+        # -> Ta cần một nút "Không ai đền" để xử lý Ù thường. 
+        # Tuy nhiên để đơn giản code, nếu người dùng muốn chọn "Không đền", 
+        # ở đây ta check logic: Nếu người dùng không chọn ai mà ấn xác nhận (logic checkbox)? 
+        # Nhưng đây là single choice button.
+
+        # Để fix: Ta sẽ thêm một lựa chọn "Không ai đền" giả vào danh sách hoặc xử lý riêng.
+        # Nhưng đơn giản nhất: Ở màn hình chọn đền, nếu ấn "Quay lại" thì về chọn Ù.
+        # Nếu muốn Ù thường -> Cần 1 nút "Không ai đền". 
+        # Trong giới hạn UI hiện tại, tôi sẽ xử lý như sau:
+        # Nếu hàm gọi có den (là 1 user) -> Đền. 
+        # Nhưng nếu muốn Ù thường, người dùng làm sao chọn?
+        # -> Tôi sẽ thêm logic: Nếu vào màn hình Đền, ta sẽ thêm 1 item ảo là "KHÔNG AI ĐỀN" vào đầu danh sách others.
+        pass # Logic này xử lý bên dưới
+
+    # Viết lại hàm u_flow_step2_den để thêm nút "Không ai đền"
+    def u_flow_step2_den(u_player):
+        others = [p for p in state["players"] if p != u_player]
+        # Tạo object giả
+        no_one = {"name": "❌ KHÔNG AI ĐỀN", "id": "nobody"}
+        opts = [no_one] + others
+
+        def handle_choice(choice):
+            if choice.get("id") == "nobody":
+                finalize_u(u_player, None)
+            else:
+                finalize_u(u_player, choice)
+
+        goto_selector("Ai phải ĐỀN?", opts, 
+                      on_submit=handle_choice, 
+                      on_back=u_flow_step1_who)
+
+    def finalize_u(u, den):
         tien = state["bet"] * 5
         u_details = []
 
@@ -313,12 +400,12 @@ def main(page: ft.Page):
             u["money"] += state["pot"]
             u_details.append(f"{u['name']} ăn gà: +{int(state['pot'])}k")
             state["pot"] = 0
-            
+
         commit_log("Ván Ù", u_details)
         view_dashboard()
 
-    # --- MÀN HÌNH LỊCH SỬ ---
-    def view_history(e):
+    # --- CÁC MÀN HÌNH KHÁC ---
+    def view_history(e=None):
         page.clean()
         controls = []
         controls.append(ft.Container(
@@ -348,20 +435,24 @@ def main(page: ft.Page):
                 controls.append(card)
         controls.append(ft.Container(height=20))
         controls.append(ft.Row([create_btn("QUAY LẠI", lambda e: view_dashboard(), bg="grey")]))
-        page.add(ft.Column(controls))
+
+        # Back -> Dashboard
+        page.add(wrap_content(controls, on_back_action=view_dashboard))
         page.update()
 
-    # --- ĐỔI TÊN & SETTINGS ---
     def goto_rename(player):
         page.clean()
         tf_name = ft.TextField(label="Nhập tên mới", value=player["name"], text_align="center", text_size=20, autofocus=True)
         def save_name(e):
             if tf_name.value.strip(): player["name"] = tf_name.value.strip()
             view_dashboard()
-        page.add(
+
+        controls = [
             ft.Container(content=ft.Text("Đổi tên", size=24, weight="bold"), alignment=ft.Alignment(0, 0), padding=20),
             tf_name, ft.Container(height=20), ft.Row([create_btn("LƯU TÊN", save_name, bg="#4CAF50")])
-        )
+        ]
+        # Back -> Dashboard
+        page.add(wrap_content(controls, on_back_action=view_dashboard))
         page.update()
 
     def goto_settings(e):
@@ -371,10 +462,13 @@ def main(page: ft.Page):
             try: state["bet"] = float(tf.value)
             except: pass
             view_dashboard()
-        page.add(
+
+        controls = [
             ft.Container(content=ft.Text("Cài đặt", size=24, weight="bold"), alignment=ft.Alignment(0, 0), padding=20),
             tf, ft.Container(height=20), ft.Row([create_btn("LƯU CÀI ĐẶT", save, bg="#4CAF50")])
-        )
+        ]
+        # Back -> Dashboard
+        page.add(wrap_content(controls, on_back_action=view_dashboard))
         page.update()
 
     def reset_game(e):
@@ -387,5 +481,3 @@ def main(page: ft.Page):
     view_dashboard()
 
 ft.app(target=main)
-
-
