@@ -8,17 +8,16 @@ logging.basicConfig(level=logging.INFO)
 DEF_BET = 10
 PLAYERS_DEF = ["Người 1", "Người 2", "Người 3", "Người 4"]
 
-# Bảng màu (Phẳng - An toàn cho mọi màn hình)
+# Bảng màu
 COLOR_BG = "#F5F7F9"
 COLOR_HEADER_BG = "#FFFFFF"
-COLOR_GOLD = "#F1C40F"
 
 def main(page: ft.Page):
     # 1. CẤU HÌNH PAGE
     page.title = "TÁ LẢ PRO"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = COLOR_BG
-    page.padding = ft.padding.only(top=60, left=15, right=15, bottom=20)
+    page.padding = 15 
     page.horizontal_alignment = ft.CrossAxisAlignment.START 
     page.scroll = None 
     
@@ -37,7 +36,6 @@ def main(page: ft.Page):
         "players": [{"name": n, "money": 0} for n in PLAYERS_DEF],
         "history": [],      
         "current_logs": [],
-        # MỚI: Tracking lịch sử ăn cây trong ván để xử lý tự động
         "an_cay_tracking": {} 
     }
     temp_data = {}
@@ -52,7 +50,7 @@ def main(page: ft.Page):
             border_radius=8,
             alignment=ft.Alignment(0, 0),
             ink=True,
-            expand=expand 
+            expand=expand
         )
 
     # --- UI COMPONENT: THẺ NGƯỜI CHƠI ---
@@ -62,35 +60,29 @@ def main(page: ft.Page):
         bg_money = "#E8F5E9" if money >= 0 else "#FFEBEE"
         
         return ft.Container(
-            height=90, 
             bgcolor="white",
             padding=15,
             border_radius=12,
             border=ft.border.all(1, "#D0D0D0"),
             content=ft.Row([
                 ft.Row([
-                    ft.Container(
-                        content=ft.Icon("person", size=24, color="white"),
-                        padding=10, bgcolor="#90A4AE", border_radius=50
-                    ),
+                    ft.Text("👤", size=32),
                     ft.Column([
                         ft.Text(p["name"], weight="bold", size=16, color="#37474F"),
                         ft.Container(
                             content=ft.Text("✎ Sửa tên", size=12, color="#1976D2"),
                             on_click=lambda e, x=p: goto_rename(x),
-                            padding=ft.padding.only(top=2, bottom=2)
                         )
                     ], spacing=2, alignment="center"),
                 ]),
                 ft.Container(
                     content=ft.Text(f"{money:,} k", color=money_color, weight="bold", size=16),
-                    bgcolor=bg_money, padding=ft.padding.symmetric(horizontal=10, vertical=5), 
-                    border_radius=8
+                    bgcolor=bg_money, padding=8, border_radius=8
                 )
             ], alignment="spaceBetween")
         )
 
-    # --- LOGIC GHI LỊCH SỬ TỔNG ---
+    # --- LOGIC GHI LỊCH SỬ ---
     def commit_log(title, result_details):
         timestamp = datetime.now().strftime("%H:%M")
         final_details = []
@@ -101,34 +93,28 @@ def main(page: ft.Page):
         final_details.extend(result_details)
         state["history"].insert(0, {"time": timestamp, "title": title, "details": final_details})
         state["current_logs"] = [] 
-        # Reset tracking ăn cây khi kết thúc ván
         state["an_cay_tracking"] = {}
 
     # ====================================================================================
-    # TÍNH NĂNG MỚI: ĂN CÂY
+    # TÍNH NĂNG ĂN CÂY
     # ====================================================================================
     def on_an_cay_loser(loser):
         if not loser: return 
         
-        # 1. Kiểm tra xem người này đã bị ăn trước đó chưa
         track = state["an_cay_tracking"].get(loser["name"])
         
-        if track: # Nếu đã bị ăn từ cây 1
+        if track: 
             count = track["count"]
             if count >= 3:
                 page.snack_bar = ft.SnackBar(ft.Text(f"{loser['name']} đã bị ăn tối đa 3 cây!"), bgcolor="red")
                 page.snack_bar.open = True; page.update(); return view_dashboard()
             
-            # Tự động lấy người được ăn từ lần đầu tiên
             winner_name = track["winner"]
             winner = next(p for p in state["players"] if p["name"] == winner_name)
             process_an_cay(loser, winner, count + 1)
         
-        else: # Nếu đây là lần đầu tiên bị ăn
-            # Lọc ra những người ĐÃ ĐƯỢC CHỌN làm người được ăn của người khác để loại trừ
+        else: 
             used_winners = [data["winner"] for data in state["an_cay_tracking"].values()]
-            
-            # Danh sách người có thể nhận cây = Trừ bản thân + Trừ những người đã có 'mối'
             avail_winners = [p for p in state["players"] if p["name"] != loser["name"] and p["name"] not in used_winners]
             
             if not avail_winners:
@@ -140,25 +126,21 @@ def main(page: ft.Page):
     def process_an_cay(loser, winner, lan_thu):
         if not winner: return view_dashboard()
         
-        # Cập nhật cache tracking
         state["an_cay_tracking"][loser["name"]] = {"winner": winner["name"], "count": lan_thu}
         
-        # Tính tiền
         he_so = 1 if lan_thu == 1 else (2 if lan_thu == 2 else 4)
         amt = state["bet"] * he_so
         
         loser["money"] -= amt
         winner["money"] += amt
         
-        # Ghi log (Có icon phân biệt để Nộp Gà không đếm nhầm)
         state["current_logs"].append(f"♦️ {loser['name']} bị {winner['name']} ăn cây {lan_thu}: -{int(amt)}k / {winner['name']}: +{int(amt)}k")
-        
         page.snack_bar = ft.SnackBar(ft.Text(f"{winner['name']} ăn cây {lan_thu} của {loser['name']} (+{int(amt)}k)"), bgcolor="green")
         page.snack_bar.open = True
         view_dashboard()
 
     # ====================================================================================
-    # TÍNH NĂNG MỚI: ĂN CHỐT
+    # TÍNH NĂNG ĂN CHỐT
     # ====================================================================================
     def on_an_chot_loser(loser):
         if not loser: return
@@ -172,13 +154,10 @@ def main(page: ft.Page):
         loser["money"] -= amt
         winner["money"] += amt
         
-        # Ghi log riêng cho chốt
         state["current_logs"].append(f"🔥 {loser['name']} bị {winner['name']} ăn CHỐT: -{int(amt)}k / {winner['name']}: +{int(amt)}k")
-        
         page.snack_bar = ft.SnackBar(ft.Text(f"{winner['name']} ăn CHỐT của {loser['name']} (+{int(amt)}k)"), bgcolor="green")
         page.snack_bar.open = True
         view_dashboard()
-
 
     # ====================================================================================
     # PHẦN GIAO DIỆN (VIEWS)
@@ -188,9 +167,8 @@ def main(page: ft.Page):
     def view_dashboard():
         controls = []
         
-        # 1. Header
+        # 1. Header (Thanh trạng thái)
         info_card = ft.Container(
-            height=100, 
             content=ft.Row([
                 ft.Column([
                     ft.Text("MỨC CƯỢC", size=12, color="grey", weight="bold"),
@@ -205,7 +183,8 @@ def main(page: ft.Page):
             padding=20, border_radius=15, bgcolor="white",
             border=ft.border.all(1, "#D0D0D0")
         )
-        controls.append(info_card)
+        # Bọc Header trong Container padding top để né tai thỏ an toàn
+        controls.append(ft.Container(content=info_card, padding=ft.padding.only(top=40)))
         controls.append(ft.Container(height=15))
 
         # 2. Danh sách người chơi
@@ -215,49 +194,40 @@ def main(page: ft.Page):
 
         controls.append(ft.Container(height=5))
 
-        # 3. Nút chức năng (Đã cập nhật thêm Ăn Cây & Ăn Chốt)
+        # 3. Nút chức năng
         actions = ft.Column([
-            # HÀNG 1: Tính năng mới
             ft.Row([
-                ft.Expanded(create_btn("ĂN CÂY", lambda e: goto_selector("Ai bị ăn cây?", state["players"], on_an_cay_loser), bg="#4CAF50")),
+                create_btn("ĂN CÂY", lambda e: goto_selector("Ai bị ăn cây?", state["players"], on_an_cay_loser), bg="#4CAF50", expand=True),
                 ft.Container(width=10),
-                ft.Expanded(create_btn("ĂN CHỐT", lambda e: goto_selector("Ai bị ăn chốt?", state["players"], on_an_chot_loser), bg="#E91E63")),
+                create_btn("ĂN CHỐT", lambda e: goto_selector("Ai bị ăn chốt?", state["players"], on_an_chot_loser), bg="#E91E63", expand=True),
             ]),
             ft.Container(height=10),
-            
-            # HÀNG 2: Giữ nguyên nộp gà vô Quỹ & Ù
             ft.Row([
-                ft.Expanded(create_btn("NỘP GÀ (QUỸ)", lambda e: goto_selector("Ai nộp gà?", state["players"], on_nop_ga_auto), bg="#FFA726")),
+                create_btn("NỘP GÀ (QUỸ)", lambda e: goto_selector("Ai nộp gà?", state["players"], on_nop_ga_auto), bg="#FFA726", expand=True),
                 ft.Container(width=10),
-                ft.Expanded(create_btn("XỬ LÝ Ù", lambda e: goto_selector("Ai Ù?", state["players"], on_u_selected), bg="#EF5350")),
+                create_btn("XỬ LÝ Ù", lambda e: goto_selector("Ai Ù?", state["players"], on_u_selected), bg="#EF5350", expand=True),
             ]),
             ft.Container(height=10),
-            
-            # HÀNG 3: Xếp hạng
             ft.Row([
-                ft.Expanded(create_btn("XẾP HẠNG VÁN ĐẤU", lambda e: goto_selector("Ai NHẤT?", state["players"], on_nhat_selected), bg="#42A5F5"))
+                create_btn("XẾP HẠNG VÁN ĐẤU", lambda e: goto_selector("Ai NHẤT?", state["players"], on_nhat_selected), bg="#42A5F5", expand=True)
             ]),
             ft.Container(height=10),
-            
-            # HÀNG 4: Công cụ
             ft.Row([
-                ft.Expanded(create_btn("LỊCH SỬ", view_history, bg="#78909C")),
+                create_btn("LỊCH SỬ", view_history, bg="#78909C", expand=True),
                 ft.Container(width=10),
-                ft.Expanded(create_btn("CÀI ĐẶT", goto_settings, bg="#78909C")),
+                create_btn("CÀI ĐẶT", goto_settings, bg="#78909C", expand=True),
                 ft.Container(width=10),
-                ft.Expanded(create_btn("RESET", reset_game, bg="#78909C")),
+                create_btn("RESET", reset_game, bg="#78909C", expand=True),
             ]),
             
-            # --- NÚT THOÁT ---
             ft.Container(height=20),
             ft.Row([
-                 ft.Expanded(create_btn("THOÁT PHẦN MỀM", lambda e: page.window_close(), bg="#B0BEC5"))
+                 create_btn("THOÁT PHẦN MỀM", lambda e: page.window_close(), bg="#B0BEC5", expand=True)
             ]),
             ft.Container(height=50) 
         ])
         controls.append(actions)
 
-        # View chính
         view = ft.View(
             route="/",
             controls=[
@@ -268,7 +238,7 @@ def main(page: ft.Page):
                 )
             ],
             bgcolor=COLOR_BG,
-            padding=ft.padding.only(top=60, left=15, right=15, bottom=20)
+            padding=15
         )
         
         page.views.clear()
@@ -280,14 +250,14 @@ def main(page: ft.Page):
         controls = []
         controls.append(ft.Container(
             content=ft.Text(title, size=20, weight="bold", color="#333333", text_align="center"),
-            padding=ft.padding.only(bottom=20), alignment=ft.alignment.center
+            padding=ft.padding.only(top=40, bottom=20), alignment=ft.Alignment(0, 0)
         ))
 
         if not multi:
             for p in items:
-                btn = create_btn(p["name"], lambda e, x=p: callback(x), bg="white", color="#1976D2")
+                btn = create_btn(p["name"], lambda e, x=p: callback(x), bg="white", color="#1976D2", expand=True)
                 btn.border = ft.border.all(1, "#1976D2")
-                controls.append(ft.Row([ft.Expanded(btn)]))
+                controls.append(ft.Row([btn]))
                 controls.append(ft.Container(height=8))
         else:
             checks = []
@@ -309,12 +279,11 @@ def main(page: ft.Page):
 
         controls.append(ft.Container(height=20))
         
-        # Nút Quay lại
         controls.append(
             ft.Container(
-                content=ft.Text("Quay lại", color="grey", text_align="center"),
+                content=ft.Text("Quay lại / Hủy", color="grey", text_align="center"),
                 on_click=lambda e: page.views.pop() or page.go("/"), 
-                padding=15, alignment=ft.alignment.center
+                padding=15, alignment=ft.Alignment(0, 0)
             )
         )
         
@@ -322,18 +291,17 @@ def main(page: ft.Page):
             route="/selector",
             controls=[ft.Column(controls, scroll=ft.ScrollMode.AUTO, expand=True)],
             bgcolor=COLOR_BG,
-            padding=ft.padding.only(top=60, left=15, right=15, bottom=20)
+            padding=15
         )
         page.views.append(view)
         page.update()
 
-    # --- CÁC HÀM LOGIC CŨ GIỮ NGUYÊN (Nộp Quỹ Gà) ---
+    # --- CÁC HÀM LOGIC ---
     def on_nop_ga_auto(p):
         if not p: return 
         count = 0
         for log in state["current_logs"]:
-            # Chỉ đếm những log cũ (Nộp gà) chứ không đếm log Ăn Cây mới (bắt đầu bằng icon)
-            if log.startswith(f"{p['name']}"): count += 1
+            if log.startswith(f"{p['name']} nộp quỹ"): count += 1
         
         if count >= 3:
             page.snack_bar = ft.SnackBar(ft.Text(f"{p['name']} đã nộp gà tối đa 3 lần!"), bgcolor="red")
@@ -349,7 +317,6 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         view_dashboard() 
 
-    # --- CÁC HÀM XẾP HẠNG (GIỮ NGUYÊN) ---
     def on_nhat_selected(nhat):
         if not nhat: return 
         temp_data.clear(); temp_data["nhat"] = nhat
@@ -399,28 +366,56 @@ def main(page: ft.Page):
         commit_log("Tổng kết ván", rank_details); temp_data.clear()
         view_dashboard()
 
-    # --- CÁC HÀM XỬ LÝ Ù (GIỮ NGUYÊN) ---
+    # --- KHÔI PHỤC LẠI LOGIC CHỌN ĐỀN LÀNG ---
     def on_u_selected(u):
         if not u: return
         temp_data["u"] = u
-        goto_selector("Có ai ĐỀN LÀNG không?", [p for p in state["players"] if p != u], on_den_selected)
+        others = [p for p in state["players"] if p != u]
+        
+        # Bổ sung nút KHÔNG AI ĐỀN giả lập làm một "người chơi" để chọn
+        no_one = {"name": "❌ KHÔNG AI ĐỀN", "id": "nobody"}
+        opts = [no_one] + others
+        
+        goto_selector("Có ai ĐỀN LÀNG không?", opts, on_den_selected)
 
     def on_den_selected(den):
-        u = temp_data["u"]; tien = state["bet"] * 5; u_details = []
-        if den:
-            phat = tien * 3; den["money"] -= phat; u["money"] += phat
-            u_details.append(f"{den['name']} đền: -{int(phat)}k")
-        else:
+        if not den: return # Nếu người dùng ấn "Quay lại" thì hủy thao tác Ù
+        
+        u = temp_data["u"]
+        tien = state["bet"] * 5
+        u_details = []
+
+        # Nếu chọn ❌ KHÔNG AI ĐỀN -> Phân bổ trừ đều cho những người còn lại
+        if den.get("id") == "nobody":
             for p in state["players"]:
-                if p != u: p["money"] -= tien; u["money"] += tien; u_details.append(f"{p['name']}: -{int(tien)}k")
+                if p != u: 
+                    p["money"] -= tien
+                    u["money"] += tien
+                    u_details.append(f"{p['name']}: -{int(tien)}k")
+            u_details.insert(0, f"{u['name']} Ù: +{int(tien * 3)}k")
+        
+        # Nếu chọn đích danh 1 người đền -> Trừ 3 lần tiền Ù vào người đó
+        else:
+            phat = tien * 3
+            den["money"] -= phat
+            u["money"] += phat
+            u_details.append(f"{den['name']} đền: -{int(phat)}k")
+            u_details.append(f"{u['name']} Ù: +{int(phat)}k")
+
+        # Ăn quỹ gà (Nếu có)
         if state["pot"] > 0:
-            u["money"] += state["pot"]; u_details.append(f"Ăn gà: +{int(state['pot'])}k"); state["pot"] = 0
-        u_details.insert(0, f"{u['name']} Ù"); commit_log("Ván Ù", u_details)
+            u["money"] += state["pot"]
+            u_details.append(f"Ăn gà: +{int(state['pot'])}k")
+            state["pot"] = 0
+            
+        commit_log("Ván Ù", u_details)
         view_dashboard()
 
     # --- MÀN HÌNH LỊCH SỬ ---
     def view_history(e):
-        controls = [ft.Text("Lịch sử đấu", size=24, weight="bold", color="#333333")]
+        controls = [
+            ft.Container(content=ft.Text("Lịch sử đấu", size=24, weight="bold", color="#333333"), padding=ft.padding.only(top=40, bottom=10))
+        ]
         if not state["history"]: controls.append(ft.Text("Trống", color="grey"))
         else:
             for log in state["history"]:
@@ -441,7 +436,7 @@ def main(page: ft.Page):
         view = ft.View(
             route="/history", 
             controls=[ft.Column(controls, scroll=ft.ScrollMode.AUTO, expand=True)], 
-            bgcolor=COLOR_BG, padding=ft.padding.only(top=60, left=15, right=15, bottom=20)
+            bgcolor=COLOR_BG, padding=15
         )
         page.views.append(view); page.update()
 
@@ -452,8 +447,11 @@ def main(page: ft.Page):
             if tf_name.value.strip(): player["name"] = tf_name.value.strip()
             view_dashboard()
         
-        controls = [ft.Text("Đổi tên", size=24), tf_name, create_btn("LƯU", save, bg="#4CAF50"), create_btn("HỦY", lambda e: page.views.pop() or page.go("/"), bg="grey")]
-        view = ft.View(route="/rename", controls=controls, bgcolor=COLOR_BG, padding=ft.padding.only(top=60, left=15, right=15, bottom=20))
+        controls = [
+            ft.Container(content=ft.Text("Đổi tên", size=24), padding=ft.padding.only(top=40, bottom=10)),
+            tf_name, create_btn("LƯU", save, bg="#4CAF50"), create_btn("HỦY", lambda e: page.views.pop() or page.go("/"), bg="grey")
+        ]
+        view = ft.View(route="/rename", controls=[ft.Column(controls)], bgcolor=COLOR_BG, padding=15)
         page.views.append(view); page.update()
 
     def goto_settings(e):
@@ -463,8 +461,11 @@ def main(page: ft.Page):
             except: pass
             view_dashboard()
         
-        controls = [ft.Text("Cài đặt cược", size=24), tf, create_btn("LƯU", save, bg="#4CAF50"), create_btn("HỦY", lambda e: page.views.pop() or page.go("/"), bg="grey")]
-        view = ft.View(route="/settings", controls=controls, bgcolor=COLOR_BG, padding=ft.padding.only(top=60, left=15, right=15, bottom=20))
+        controls = [
+            ft.Container(content=ft.Text("Cài đặt cược", size=24), padding=ft.padding.only(top=40, bottom=10)),
+            tf, create_btn("LƯU", save, bg="#4CAF50"), create_btn("HỦY", lambda e: page.views.pop() or page.go("/"), bg="grey")
+        ]
+        view = ft.View(route="/settings", controls=[ft.Column(controls)], bgcolor=COLOR_BG, padding=15)
         page.views.append(view); page.update()
 
     def reset_game(e):
