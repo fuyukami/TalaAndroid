@@ -1,7 +1,9 @@
 name: Build Android APK
+
 on:
   push:
     branches: [ main ]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -11,28 +13,59 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          python-version: '3.11'
-
-      - name: Install Flet
-        run: |
-          pip install flet
-          pip install -r requirements.txt
+          distribution: temurin
+          java-version: '25'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
+          flutter-version: 3.50.1
           cache: true
 
-      - name: Build APK
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      # Khoá ký cố định: thêm 4 secret KEYSTORE_BASE64, KEYSTORE_PASSWORD,
+      # KEY_ALIAS, KEY_PASSWORD trong Settings > Secrets and variables > Actions.
+      # Thiếu secret thì APK được ký bằng khoá debug (mỗi lần build một khoá khác).
+      - name: Set up signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          flet build apk --verbose 
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload.jks
+            {
+              echo "storeFile=upload.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > android/key.properties
+            echo "Ký APK bằng khoá cố định."
+          else
+            echo "::warning::Chưa có secret KEYSTORE_BASE64, APK được ký bằng khoá debug."
+          fi
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk TaLaPro.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TaLaPro-App
-          path: "**/*.apk"
+          path: TaLaPro.apk
