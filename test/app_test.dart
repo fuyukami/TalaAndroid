@@ -118,4 +118,21 @@ void main() {
     await tapText(tester, 'NỘP GÀ');
     expect(find.text('đã nộp 3 lần'), findsOneWidget);
   });
+
+  testWidgets('Không hiện ô thông báo sau thao tác; vuốt quay lại ở màn chính hỏi thoát', (tester) async {
+    await pumpApp(tester);
+    await tapText(tester, 'ĂN CHỐT');
+    await tapText(tester, 'Người 1');
+    await tapText(tester, 'Người 2', index: 1);
+    await tapText(tester, 'XÁC NHẬN');
+    expect(find.byType(SnackBar), findsNothing);
+    await tapText(tester, 'HOÀN TÁC');
+    expect(find.byType(SnackBar), findsNothing);
+
+    await systemBack(tester);
+    expect(find.text('Thoát app?'), findsOneWidget);
+    await tester.tap(find.text('Huỷ'));
+    await tester.pumpAndSettle();
+    expect(onHome(tester), isTrue);
+  });
 }

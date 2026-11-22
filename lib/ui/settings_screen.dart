@@ -106,14 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showMsg(context, err, error: true);
       return;
     }
-    dirty = false;
-    final m = ScaffoldMessenger.of(context);
+    setState(() => dirty = false);
     Navigator.of(context).pop();
-    m.hideCurrentSnackBar();
-    m.showSnackBar(const SnackBar(
-        content: Text('Đã lưu cài đặt'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Color(0xFF1C2A24)));
   }
 
   @override

@@ -55,8 +55,8 @@ class _ActionFrame extends StatelessWidget {
   }
 }
 
-/// Áp dụng thao tác, đóng màn và báo kết quả. Trả về true nếu thành công.
-bool _commit(BuildContext context, RuleResult r, String okMsg) {
+/// Áp dụng thao tác và đóng màn. Chỉ báo khi có lỗi. Trả về true nếu thành công.
+bool _commit(BuildContext context, RuleResult r) {
   final c = Ctl.read(context);
   final err = c.apply(r);
   if (err != null) {
@@ -64,14 +64,7 @@ bool _commit(BuildContext context, RuleResult r, String okMsg) {
     return false;
   }
   HapticFeedback.mediumImpact();
-  final messenger = ScaffoldMessenger.of(context);
   Navigator.of(context).pop();
-  messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(SnackBar(
-    content: Text(okMsg, style: const TextStyle(fontSize: 15)),
-    behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF1C2A24),
-  ));
   return true;
 }
 
@@ -149,7 +142,7 @@ class _AnCayScreenState extends State<AnCayScreen> {
     return _ActionFrame(
       title: 'Ăn cây',
       onConfirm: r?.ok == true
-          ? () => _commit(context, r!, '${s.nameOf(winner)} ăn cây ${r.event!.lan} của ${s.nameOf(loser)}')
+          ? () => _commit(context, r!)
           : null,
       children: [
         Panel(
@@ -226,7 +219,7 @@ class _AnChotScreenState extends State<AnChotScreen> {
     return _ActionFrame(
       title: 'Ăn chốt',
       onConfirm: r?.ok == true
-          ? () => _commit(context, r!, '${s.nameOf(winner)} ăn chốt của ${s.nameOf(loser)}')
+          ? () => _commit(context, r!)
           : null,
       children: [
         Panel(
@@ -287,7 +280,7 @@ class _NopGaScreenState extends State<NopGaScreen> {
     return _ActionFrame(
       title: 'Nộp gà',
       onConfirm: r?.ok == true
-          ? () => _commit(context, r!, '${s.nameOf(who)} nộp gà ${fmtK(r.event!.potDelta)}')
+          ? () => _commit(context, r!)
           : null,
       children: [
         Panel(
@@ -362,7 +355,7 @@ class _UScreenState extends State<UScreen> {
               final amount = r!.event!.deltas[u]!;
               final name = s.nameOf(u);
               final id = u!;
-              if (_commit(context, r, '$name Ù ${fmtK(amount, sign: true)}')) {
+              if (_commit(context, r)) {
                 nav.push(CelebrationRoute(playerId: id, name: name, amount: amount));
               }
             }
@@ -492,7 +485,7 @@ class _XepHangScreenState extends State<XepHangScreen> {
       title: 'Xếp hạng ván',
       confirmLabel: 'KẾT THÚC VÁN',
       onConfirm: r?.ok == true
-          ? () => _commit(context, r!, 'Đã kết thúc ván ${s.roundNumber}: ${s.nameOf(r.event!.winnerId)} Nhất')
+          ? () => _commit(context, r!)
           : null,
       children: [
         Text('Chọn hạng cho từng người. Người không móm lần lượt là '

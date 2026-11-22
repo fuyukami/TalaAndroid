@@ -18,8 +18,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  DateTime? _lastBack;
-
   Future<void> _exit() async {
     final ok = await confirm(context,
         title: 'Thoát app?', message: 'Dữ liệu đã được lưu. Mở lại app sẽ tiếp tục đúng chỗ này.', ok: 'Thoát');
@@ -28,24 +26,11 @@ class _HomeScreenState extends State<HomeScreen> {
     await SystemNavigator.pop();
   }
 
-  void _onBack() {
-    final now = DateTime.now();
-    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
-      Ctl.read(context).save().then((_) => SystemNavigator.pop());
-      return;
-    }
-    _lastBack = now;
-    showMsg(context, 'Bấm quay lại lần nữa để thoát');
-  }
 
   Future<void> _go(Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
-  Future<void> _undo() async {
-    final c = Ctl.read(context);
-    final label = c.undo();
-    if (label != null && mounted) showMsg(context, 'Đã hoàn tác: $label');
-  }
+  void _undo() => Ctl.read(context).undo();
 
   Future<void> _reset() async {
     final ok = await confirm(context,
@@ -55,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
         danger: true);
     if (ok && mounted) {
       Ctl.read(context).reset();
-      showMsg(context, 'Đã reset. Bấm Hoàn tác để lấy lại.');
     }
   }
 
@@ -109,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _onBack();
+        if (!didPop) _exit();
       },
       child: Scaffold(
         backgroundColor: p.feltBottom,
