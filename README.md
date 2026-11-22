@@ -24,6 +24,10 @@ App Android tính điểm tá lả, viết bằng Flutter.
 
 ## Phát triển
 
+Phiên bản dùng chung cho máy phát triển và GitHub Actions: Flutter 3.50.1 (Dart 3.14), JDK 25,
+Android Gradle Plugin 9.3.1, Gradle 9.5.0, Kotlin 2.4.20. Các bản Android SDK (compileSdk, targetSdk,
+NDK) lấy theo mặc định của Flutter 3.50.1 nên tự khớp.
+
 ```
 flutter pub get
 flutter test      # test luật tính tiền và các luồng giao diện
